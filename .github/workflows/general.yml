@@ -1,0 +1,32 @@
+name: Rust General CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  lint:
+    name: Check lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Run format Check
+        run: cargo fmt --check
+
+      - name: Run lint --check
+        run: cargo clippy -- -D warnings
+
+  test:
+    name: Test codebase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Test
+        run: cargo test
