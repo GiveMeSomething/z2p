@@ -2,7 +2,8 @@ use actix_web::{
     body::{BodySize, MessageBody},
     test,
 };
-use z2p::spawn_app;
+use reqwest::Client;
+use z2p::{spawn_app, spawn_server};
 
 #[actix_web::test]
 async fn health_check_works() {
@@ -13,4 +14,21 @@ async fn health_check_works() {
 
     assert!(res.status().is_success());
     assert_eq!(res.into_body().size(), BodySize::Sized(0));
+}
+
+#[actix_web::test]
+async fn health_check_works_reqwest() {
+    // Ignore warning, tokio manage the server in a different thread
+    let server_address = spawn_server().await;
+
+    let test_client = Client::new();
+
+    let response = test_client
+        .get(format!("{}/health_check", server_address))
+        .send()
+        .await
+        .expect("Failed to send request to server");
+
+    assert!(response.status().is_success());
+    assert_eq!(response.content_length(), Some(0));
 }

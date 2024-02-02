@@ -1,13 +1,10 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use std::net::TcpListener;
 
-async fn health_check() -> impl Responder {
-    HttpResponse::Ok()
-}
+use z2p::run;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().route("/health_check", web::get().to(health_check)))
-        .bind("localhost:8000")?
-        .run()
-        .await
+    let listener =
+        TcpListener::bind("localhost:8000").expect("Failed to create TCP listener on port 8000");
+    run(listener).await.unwrap().await
 }

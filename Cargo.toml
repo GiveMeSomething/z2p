@@ -17,3 +17,7 @@ name = "z2p"
 [dependencies]
 actix-http = "3.5.1"
 actix-web = "4.4.1"
+tokio = "1.35.1"
+
+[dev-dependencies]
+reqwest = "0.11.24"
