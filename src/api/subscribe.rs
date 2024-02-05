@@ -1,5 +1,12 @@
-use actix_web::{HttpResponse, Responder};
+use actix_web::{web::Form, HttpResponse, Responder};
 
-pub async fn subscribe() -> impl Responder {
+#[derive(serde::Deserialize)]
+pub struct FormData {
+    name: String,
+    email: String,
+}
+
+pub async fn subscribe(_form: Form<FormData>) -> impl Responder {
+    println!("Name: {}, Email: {}", _form.name, _form.email);
     HttpResponse::Ok()
 }
