@@ -3,12 +3,13 @@ use std::net::TcpListener;
 use actix_http::Request;
 use actix_web::{
     dev::{Server, Service, ServiceResponse},
-    test, web, App, Error, HttpResponse, HttpServer, Responder,
+    test, web, App, Error, HttpServer,
 };
 
-async fn health_check() -> impl Responder {
-    HttpResponse::Ok()
-}
+mod api;
+use api::{health_check::health_check, subscribe::subscribe};
+
+// UTILS
 
 /**
  * Actix provide some conveniences to interact with an App without skipping the routing logic
@@ -42,10 +43,14 @@ pub async fn spawn_server() -> String {
     format!("http://localhost:{}", bind_port)
 }
 
-pub async fn run(listener: TcpListener) -> std::io::Result<Server> {
-    let server = HttpServer::new(|| App::new().route("health_check", web::get().to(health_check)))
-        .listen(listener)?
-        .run();
+pub async fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
+    let server = HttpServer::new(|| {
+        App::new()
+            .route("health_check", web::get().to(health_check))
+            .route("subscribe", web::post().to(subscribe))
+    })
+    .listen(listener)?
+    .run();
 
     Ok(server)
 }

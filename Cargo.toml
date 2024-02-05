@@ -16,6 +16,7 @@ name = "z2p"
 [dependencies]
 actix-http = "3.5.1"
 actix-web = "4.4.1"
+serde = { version = "1.0.196", features = ["derive"] }
 tokio = { version = "1.35.1", features = ["full"] }
 
 [dev-dependencies]
