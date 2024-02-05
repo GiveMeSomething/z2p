@@ -1,5 +1,4 @@
 use std::net::TcpListener;
-
 use z2p::run;
 
 #[actix_web::main]
