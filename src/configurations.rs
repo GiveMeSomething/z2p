@@ -1,3 +1,5 @@
+use sqlx::{Connection, PgConnection};
+
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
@@ -11,6 +13,22 @@ pub struct DatabaseSettings {
     pub port: u16,
     pub host: String,
     pub database_name: String,
+}
+
+impl DatabaseSettings {
+    pub fn connection_string(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.username, self.password, self.host, self.port, self.database_name
+        )
+    }
+
+    pub async fn pg_connection(&self) -> PgConnection {
+        let connection_string = self.connection_string();
+        return PgConnection::connect(&connection_string)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to connect to the datbase with err {:?}", err));
+    }
 }
 
 pub fn read_configuration() -> Result<Settings, config::ConfigError> {

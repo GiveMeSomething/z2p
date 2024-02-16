@@ -1,8 +1,12 @@
 use reqwest::Client;
-use z2p::startup::spawn_server;
+use z2p::{configurations::read_configuration, startup::spawn_server};
 
 #[tokio::test]
 async fn subscribe_200_for_valid_form() {
+    let configuration = read_configuration().expect("Failed to read configuration");
+
+    let mut connection = configuration.database.pg_connection().await;
+
     let server_address = spawn_server().await;
     let test_client = Client::new();
 
@@ -15,7 +19,17 @@ async fn subscribe_200_for_valid_form() {
         .await
         .expect("Failed to send the request to the server");
 
+    // Check server response
     assert_eq!(response.status().as_u16(), 200);
+
+    // Check database data
+    let saved_subscription = sqlx::query!("SELECT name, email FROM subscriptions")
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to query from the datadabase");
+
+    assert_eq!(saved_subscription.name, "test");
+    assert_eq!(saved_subscription.email, "test@gmail.com");
 }
 
 #[tokio::test]
