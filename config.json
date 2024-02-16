@@ -1,0 +1,10 @@
+{
+  "database": {
+    "username": "postgres",
+    "password": "Password@123",
+    "port": 8000,
+    "host": "localhost",
+    "database_name": "z2p"
+  },
+  "app_port": "8000"
+}

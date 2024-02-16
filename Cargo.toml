@@ -16,6 +16,7 @@ name = "z2p"
 [dependencies]
 actix-http = "3.5.1"
 actix-web = "4.4.1"
+config = "0.14.0"
 serde = { version = "1.0.196", features = ["derive"] }
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "tls-rustls", "macros", "postgres", "uuid", "chrono", "migrate"] }
 tokio = { version = "1.35.1", features = ["full"] }

@@ -1,9 +1,7 @@
-use actix_web::{
-    body::{BodySize, MessageBody},
-    test,
-};
+use actix_http::body::MessageBody;
+use actix_web::{body::BodySize, test};
 use reqwest::Client;
-use z2p::{spawn_app, spawn_server};
+use z2p::startup::{spawn_app, spawn_server};
 
 #[tokio::test]
 async fn health_check_works() {

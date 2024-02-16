@@ -1,5 +1,5 @@
 use reqwest::Client;
-use z2p::spawn_server;
+use z2p::startup::spawn_server;
 
 #[tokio::test]
 async fn subscribe_200_for_valid_form() {
