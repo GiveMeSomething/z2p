@@ -18,8 +18,12 @@ DB_NAME="${POSTGRESS_DB:=z2p}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 
-if ! [ $(docker ps -f "name"="${CONTAINER_NAME}" --format '{{.Names}}') == "${CONTAINER_NAME}" ]; then
-  docker run --name z2p-db \
+if ! [ $(docker ps -f "name=${CONTAINER_NAME}" --format '{{.Names}}') == "${CONTAINER_NAME}" ]; then
+  if [ $(docker ps -a -f "status=exited" -f "name=${CONTAINER_NAME}" --format '{{.Names}}') == "${CONTAINER_NAME}" ]; then
+    docker rm ${CONTAINER_NAME}
+  fi
+
+  docker run --name ${CONTAINER_NAME} \
     -e POSTGRES_USER=${DB_USER} \
     -e POSTGRES_PASSWORD=${DB_PASSWORD} \
     -e POSTGRESS_DB=${DB_NAME} \

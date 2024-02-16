@@ -8,7 +8,7 @@ async fn subscribe_200_for_valid_form() {
 
     let body = "name=test&email=test@gmail.com";
     let response = test_client
-        .post(format!("{}/subscribe", server_address))
+        .post(format!("{}/subscriptions", server_address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -31,7 +31,7 @@ async fn subscribe_400_for_invalid_form() {
 
     for (invalid_body, message) in test_cases {
         let response = test_client
-            .post(format!("{}/subscribe", server_address))
+            .post(format!("{}/subscriptions", server_address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(invalid_body)
             .send()

@@ -1,3 +1,7 @@
+pub mod configurations;
+pub mod routes;
+pub mod startup;
+
 use std::net::TcpListener;
 
 use actix_http::Request;
@@ -6,8 +10,7 @@ use actix_web::{
     test, web, App, Error, HttpServer,
 };
 
-mod api;
-use api::{health_check::health_check, subscribe::subscribe};
+use routes::{health_check::health_check, subscribe::subscribe};
 
 // UTILS
 
@@ -47,7 +50,7 @@ pub async fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
     let server = HttpServer::new(|| {
         App::new()
             .route("health_check", web::get().to(health_check))
-            .route("subscribe", web::post().to(subscribe))
+            .route("subscriptions", web::post().to(subscribe))
     })
     .listen(listener)?
     .run();
