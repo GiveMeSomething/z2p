@@ -20,6 +20,7 @@ config = "0.14.0"
 serde = { version = "1.0.196", features = ["derive"] }
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "tls-rustls", "macros", "postgres", "uuid", "chrono", "migrate"] }
 tokio = { version = "1.35.1", features = ["full"] }
+uuid = { version = "1.7.0", features = ["v4"] }
 
 [dev-dependencies]
 reqwest = "0.11.24"

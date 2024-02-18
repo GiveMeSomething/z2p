@@ -1,4 +1,4 @@
-use sqlx::{Connection, PgConnection};
+use sqlx::{Connection, PgConnection, PgPool};
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
@@ -28,6 +28,18 @@ impl DatabaseSettings {
         return PgConnection::connect(&connection_string)
             .await
             .unwrap_or_else(|err| panic!("Failed to connect to the datbase with err {:?}", err));
+    }
+
+    pub async fn pg_connection_pool(&self) -> PgPool {
+        let connection_string = self.connection_string();
+        PgPool::connect(&connection_string)
+            .await
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to connect to the datbase connection pool with error {:?}",
+                    err
+                )
+            })
     }
 }
 
