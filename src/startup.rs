@@ -34,8 +34,8 @@ pub async fn spawn_app() -> impl Service<Request, Response = ServiceResponse, Er
 * Function to spawn server (at the start of each tests)
 */
 pub async fn spawn_server() -> String {
-    let configurations = read_configuration().expect("Failed to read configurations");
-    let db_pool = configurations.database.pg_connection_pool().await;
+    let mut configurations = read_configuration().expect("Failed to read configurations");
+    let db_pool = configurations.database.pg_connection_pool_random().await;
 
     let listener = TcpListener::bind("localhost:0")
         .unwrap_or_else(|err| panic!("Cannot bind to random port with error {:?}", err));
