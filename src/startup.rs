@@ -5,9 +5,29 @@ use actix_web::{
     dev::{Server, Service, ServiceResponse},
     test, web, App, Error, HttpServer,
 };
+use once_cell::sync::Lazy;
+use sqlx::PgPool;
+use tracing_actix_web::TracingLogger;
 
-use crate::routes::health_check::health_check;
-use crate::routes::subscribe::subscribe;
+use crate::{
+    configurations::{read_configuration, Settings},
+    routes::{health_check, subscribe},
+    telemetry::{gen_subscriber, init_subscriber},
+};
+
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let default_filter_level = "info".to_string();
+    let subscriber_name = "test".to_string();
+
+    // Enable logging to stdout if TEST_LOG=true
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = gen_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+        init_subscriber(subscriber);
+    } else {
+        let subscriber = gen_subscriber(subscriber_name, default_filter_level, std::io::sink);
+        init_subscriber(subscriber);
+    }
+});
 
 /**
  * Actix provide some conveniences to interact with an App without skipping the routing logic
@@ -30,22 +50,34 @@ pub async fn spawn_app() -> impl Service<Request, Response = ServiceResponse, Er
 /**
 * Function to spawn server (at the start of each tests)
 */
-pub async fn spawn_server() -> String {
+pub async fn spawn_server() -> (String, Settings) {
+    Lazy::force(&TRACING);
+
+    let mut configurations = read_configuration().expect("Failed to read configurations");
+    let db_pool = configurations.database.pg_connection_pool_random().await;
+
     let listener = TcpListener::bind("localhost:0")
         .unwrap_or_else(|err| panic!("Cannot bind to random port with error {:?}", err));
     let bind_port = listener.local_addr().unwrap().port();
 
-    let server = run(listener).await.expect("Failed to spawn new server");
+    let server = run(listener, db_pool)
+        .await
+        .expect("Failed to spawn new server");
     let _ = tokio::spawn(server);
 
-    format!("http://localhost:{}", bind_port)
+    (format!("http://localhost:{}", bind_port), configurations)
 }
 
-pub async fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
-    let server = HttpServer::new(|| {
+pub async fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
+    // Atomic Reference Counted pointer - smart pointer
+    let db_pool = web::Data::new(db_pool);
+
+    let server = HttpServer::new(move || {
         App::new()
+            .wrap(TracingLogger::default())
             .route("health_check", web::get().to(health_check))
             .route("subscriptions", web::post().to(subscribe))
+            .app_data(db_pool.clone())
     })
     .listen(listener)?
     .run();

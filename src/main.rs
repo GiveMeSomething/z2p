@@ -1,29 +1,24 @@
 use std::net::TcpListener;
-use z2p::{configurations, startup::run};
+use z2p::{
+    configurations,
+    startup::run,
+    telemetry::{gen_subscriber, init_subscriber},
+};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    let subscriber = gen_subscriber("z2p".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
+
     let configurations =
         configurations::read_configuration().expect("Failed to read configurations.");
 
-    let db_config = configurations.database;
-    println!(
-        "Starting server with database {}",
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            db_config.username,
-            db_config.password,
-            db_config.host,
-            db_config.port,
-            db_config.database_name
-        )
-    );
+    let db_connection_pool = configurations.database.pg_connection_pool().await;
 
     let app_address = format!("localhost:{}", configurations.app_port);
     println!("Starting server at http://{}", app_address);
 
     let listener =
         TcpListener::bind(app_address).expect("Failed to create TCP listener on port 8000");
-
-    run(listener).await.unwrap().await
+    run(listener, db_connection_pool).await.unwrap().await
 }
