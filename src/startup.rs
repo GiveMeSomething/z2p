@@ -63,7 +63,8 @@ pub async fn spawn_server() -> (String, Settings) {
     let server = run(listener, db_pool)
         .await
         .expect("Failed to spawn new server");
-    let _ = tokio::spawn(server);
+
+    tokio::spawn(server);
 
     (format!("http://localhost:{}", bind_port), configurations)
 }

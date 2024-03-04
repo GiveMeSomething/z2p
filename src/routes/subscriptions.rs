@@ -20,23 +20,9 @@ pub struct FormData {
     )
 )]
 pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl Responder {
-    let request_id = Uuid::new_v4();
     match insert_subscriber(form, db_pool.get_ref()).await {
-        Ok(_) => {
-            tracing::info!(
-                "request_id {} - New subscriber details have been saved",
-                request_id
-            );
-            HttpResponse::Ok()
-        }
-        Err(error) => {
-            tracing::error!(
-                "request_id {} - Failed to execute query with error {:?}",
-                request_id,
-                error
-            );
-            HttpResponse::InternalServerError()
-        }
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
 

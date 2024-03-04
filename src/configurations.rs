@@ -41,14 +41,14 @@ impl DatabaseSettings {
 
     pub async fn pg_connection(&self) -> PgConnection {
         let connection_string = self.connection_string();
-        return PgConnection::connect(&connection_string.expose_secret())
+        PgConnection::connect(connection_string.expose_secret())
             .await
-            .unwrap_or_else(|err| panic!("Failed to connect to the datbase with err {:?}", err));
+            .unwrap_or_else(|err| panic!("Failed to connect to the datbase with err {:?}", err))
     }
 
     pub async fn pg_connection_pool(&self) -> PgPool {
         let connection_string = self.connection_string();
-        PgPool::connect(&connection_string.expose_secret())
+        PgPool::connect(connection_string.expose_secret())
             .await
             .unwrap_or_else(|err| {
                 panic!(
@@ -59,7 +59,7 @@ impl DatabaseSettings {
     }
 
     pub async fn pg_connection_pool_random(&mut self) -> PgPool {
-        let mut connection = PgConnection::connect(&self.connection_string_no_db().expose_secret())
+        let mut connection = PgConnection::connect(self.connection_string_no_db().expose_secret())
             .await
             .expect("Failed to connect to Postgres database");
 
@@ -71,7 +71,7 @@ impl DatabaseSettings {
             .unwrap_or_else(|err| panic!("Failed to create a random database with err {}", err));
 
         // Migrate database
-        let connection_pool = PgPool::connect(&self.connection_string().expose_secret())
+        let connection_pool = PgPool::connect(self.connection_string().expose_secret())
             .await
             .expect("Failed to connect to the database");
         sqlx::migrate!("./migrations")
@@ -79,7 +79,7 @@ impl DatabaseSettings {
             .await
             .expect("Failed to migrate the database");
 
-        return connection_pool;
+        connection_pool
     }
 }
 
