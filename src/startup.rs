@@ -3,11 +3,11 @@ use std::net::TcpListener;
 use actix_http::Request;
 use actix_web::{
     dev::{Server, Service, ServiceResponse},
-    middleware::Logger,
     test, web, App, Error, HttpServer,
 };
 use once_cell::sync::Lazy;
 use sqlx::PgPool;
+use tracing_actix_web::TracingLogger;
 
 use crate::{
     configurations::{read_configuration, Settings},
@@ -74,7 +74,7 @@ pub async fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::
 
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
             .route("health_check", web::get().to(health_check))
             .route("subscriptions", web::post().to(subscribe))
             .app_data(db_pool.clone())
