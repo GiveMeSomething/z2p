@@ -17,7 +17,9 @@ async fn health_check_works() {
 #[tokio::test]
 async fn health_check_works_reqwest() {
     // Ignore warning, tokio manage the server in a different thread
-    let server_address = spawn_server().await;
+    let config = spawn_server().await;
+    let server_address = config.0;
+
     let test_client = Client::new();
 
     let response = test_client
