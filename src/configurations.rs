@@ -4,8 +4,14 @@ use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
+    pub application: ApplicationSettings,
     pub database: DatabaseSettings,
-    pub app_port: u16,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ApplicationSettings {
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(serde::Deserialize)]
@@ -46,16 +52,14 @@ impl DatabaseSettings {
             .unwrap_or_else(|err| panic!("Failed to connect to the datbase with err {:?}", err))
     }
 
-    pub async fn pg_connection_pool(&self) -> PgPool {
+    pub fn pg_connection_pool(&self) -> PgPool {
         let connection_string = self.connection_string();
-        PgPool::connect(connection_string.expose_secret())
-            .await
-            .unwrap_or_else(|err| {
-                panic!(
-                    "Failed to connect to the datbase connection pool with error {:?}",
-                    err
-                )
-            })
+        PgPool::connect_lazy(connection_string.expose_secret()).unwrap_or_else(|err| {
+            panic!(
+                "Failed to connect to the datbase connection pool with error {:?}",
+                err
+            )
+        })
     }
 
     pub async fn pg_connection_pool_random(&mut self) -> PgPool {
@@ -84,10 +88,48 @@ impl DatabaseSettings {
 }
 
 pub fn read_configuration() -> Result<Settings, config::ConfigError> {
+    let base_path = std::env::current_dir().expect("Failed to determine the current dir path");
+    let config_dir = base_path.join("config");
+
+    let environment: Environment = std::env::var("APP_ENV")
+        .unwrap_or_else(|_| "local".into())
+        .try_into()
+        .expect("Failed to parse APP_ENV");
+    let env_file = format!("{}.json", environment.as_str());
+
     let settings = config::Config::builder()
-        .add_source(config::File::new("config.json", config::FileFormat::Json))
+        .add_source(config::File::from(config_dir.join("base.json")))
+        .add_source(config::File::from(config_dir.join(env_file)))
         .build()
         .unwrap_or_else(|err| panic!("Cannot read app configurations with error {:?}", err));
 
     settings.try_deserialize::<Settings>()
+}
+
+pub enum Environment {
+    Local,
+    Production,
+}
+
+impl Environment {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Environment::Local => "local",
+            Environment::Production => "production",
+        }
+    }
+}
+
+impl TryFrom<String> for Environment {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "local" => Ok(Environment::Local),
+            "production" => Ok(Environment::Production),
+            other => Err(format!(
+                "{} is not a supported environment. Use either `local` or `production`.",
+                other
+            )),
+        }
+    }
 }

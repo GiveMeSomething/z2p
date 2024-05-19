@@ -1,13 +1,18 @@
 name: Rust General CI
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
 
 jobs:
   lint:
     name: Check lint and format
     runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +29,8 @@ jobs:
   test:
     name: Test codebase
     runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

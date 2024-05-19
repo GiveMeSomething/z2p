@@ -13,9 +13,12 @@ async fn main() -> std::io::Result<()> {
     let configurations =
         configurations::read_configuration().expect("Failed to read configurations.");
 
-    let db_connection_pool = configurations.database.pg_connection_pool().await;
+    let db_connection_pool = configurations.database.pg_connection_pool();
 
-    let app_address = format!("localhost:{}", configurations.app_port);
+    let app_address = format!(
+        "{}:{}",
+        configurations.application.host, configurations.application.port
+    );
     println!("Starting server at http://{}", app_address);
 
     let listener =

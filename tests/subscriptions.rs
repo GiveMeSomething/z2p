@@ -6,7 +6,7 @@ async fn subscribe_200_for_valid_form() {
     let config = spawn_server().await;
     let server_address = config.0;
     let db_config = config.1;
-    let db_pool = db_config.database.pg_connection_pool().await;
+    let db_pool = db_config.database.pg_connection_pool();
 
     let test_client = Client::new();
 
