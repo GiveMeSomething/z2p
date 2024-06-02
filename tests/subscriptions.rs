@@ -65,3 +65,39 @@ async fn subscribe_400_for_invalid_form() {
         );
     }
 }
+
+#[tokio::test]
+async fn subscribe_400_for_invalid_name() {
+    let config = spawn_server().await;
+    let server_address = config.0;
+
+    let test_client = Client::new();
+
+    let too_long_name = format!("name={}&email=example@example.com", "M".repeat(256));
+    let test_cases = vec![
+        ("name=&email=example@example.com", "empty name"),
+        ("name=      &email=example@example.com", "whitespace name"),
+        (
+            "name=&email=example@example.com",
+            "name with special characters",
+        ),
+        (too_long_name.as_str(), "too long name"),
+    ];
+
+    for (invalid_body, message) in test_cases {
+        let response = test_client
+            .post(format!("{}/subscriptions", server_address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(invalid_body)
+            .send()
+            .await
+            .expect("Failed to send the request to the server");
+
+        assert_eq!(
+            response.status().as_u16(),
+            400,
+            "The API did not fail with 400 status code, case: {}",
+            message
+        );
+    }
+}
