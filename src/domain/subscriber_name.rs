@@ -45,7 +45,7 @@ impl AsRef<str> for SubscriberName {
 mod tests {
     use claims::{assert_err, assert_ok};
 
-    use crate::domain::SubscriberName;
+    use crate::domain::subscriber_name::SubscriberName;
 
     #[test]
     fn empty_string_is_rejected() {
