@@ -3,8 +3,9 @@ use actix_web::{
     HttpResponse, Responder,
 };
 use sqlx::{types::chrono::Utc, PgPool};
-use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
+
+use crate::domain::{NewSubscriber, SubscriberName};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -21,43 +22,38 @@ pub struct FormData {
     )
 )]
 pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl Responder {
-    match insert_subscriber(form, db_pool.get_ref()).await {
+    let subscriber_name = match SubscriberName::parse(form.0.name) {
+        Ok(name) => name,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+
+    let new_subscriber = NewSubscriber {
+        email: form.0.email,
+        name: subscriber_name,
+    };
+
+    match insert_subscriber(&db_pool, &new_subscriber).await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
 
-pub fn is_valid_name(s: &str) -> bool {
-    let is_empty = s.trim().is_empty();
-
-    // A grapheme is defined by the Unicode standard as a "user-perceived"
-    // character: `å` is a single grapheme, but it is composed of two characters
-    // (`a` and `̊`).
-    //
-    // `graphemes` returns an iterator over the graphemes in the input `s`.
-    // `true` specifies that we want to use the extended grapheme definition set,
-    // the recommended one.
-    let is_too_long = s.graphemes(true).count() > 256;
-
-    let forbidden_chars = ['/', '(', ')', '<', '>', '[', ']', '\\', '{', '}'];
-    let contains_forbidden_chars = s.chars().any(|g| forbidden_chars.contains(&g));
-
-    !(is_empty || is_too_long || contains_forbidden_chars)
-}
-
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(form, pool)
+    skip(pool, new_subscriber)
 )]
-async fn insert_subscriber(form: Form<FormData>, pool: &PgPool) -> Result<(), sqlx::Error> {
+async fn insert_subscriber(
+    pool: &PgPool,
+    new_subscriber: &NewSubscriber,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
     INSERT INTO subscriptions (id, name, email, subscribed_at)
     VALUES ($1, $2, $3, $4)
     "#,
         Uuid::new_v4(),
-        form.name,
-        form.email,
+        new_subscriber.name.as_ref(),
+        new_subscriber.email,
         Utc::now()
     )
     .execute(pool)
