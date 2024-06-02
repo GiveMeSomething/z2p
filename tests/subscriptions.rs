@@ -67,21 +67,19 @@ async fn subscribe_400_for_invalid_form() {
 }
 
 #[tokio::test]
-async fn subscribe_400_for_invalid_name() {
+async fn subscribe_400_for_invalid_payload() {
     let config = spawn_server().await;
     let server_address = config.0;
 
     let test_client = Client::new();
 
-    let too_long_name = format!("name={}&email=example@example.com", "M".repeat(256));
     let test_cases = vec![
         ("name=&email=example@example.com", "empty name"),
         ("name=      &email=example@example.com", "whitespace name"),
-        (
-            "name=&email=example@example.com",
-            "name with special characters",
-        ),
-        (too_long_name.as_str(), "too long name"),
+        ("name=&email=example@example.com", "name with special characters"),
+        ("name=thisisaverylongexample190237910273901230912730912730127301297301273091273097120397109371027312093710273012730129730127302173012731203917301723071203thisisaverylongexample190237910273901230912730912730127301297301273091273097120397109371027312093endofverylongexample&email=example@example.com", "too long name"),   
+        ("name=hello&email=", "empty email"),
+        ("name=hello&email=definately-not-a-valid-email", "invalid email")
     ];
 
     for (invalid_body, message) in test_cases {
