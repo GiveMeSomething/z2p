@@ -4,6 +4,8 @@ pub struct NewSubscriber {
     pub email: String,
     pub name: SubscriberName,
 }
+
+#[derive(Debug)]
 pub struct SubscriberName(String);
 
 impl SubscriberName {
@@ -65,7 +67,7 @@ mod tests {
 
     #[test]
     fn a_257_grapheme_name_is_rejected() {
-        let name = "ớ".repeat(256);
+        let name = "ớ".repeat(257);
         assert_err!(SubscriberName::parse(name));
     }
 
