@@ -3,6 +3,7 @@ use actix_web::{
     HttpResponse, Responder,
 };
 use sqlx::{types::chrono::Utc, PgPool};
+use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
@@ -24,6 +25,24 @@ pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
+}
+
+pub fn is_valid_name(s: &str) -> bool {
+    let is_empty = s.trim().is_empty();
+
+    // A grapheme is defined by the Unicode standard as a "user-perceived"
+    // character: `å` is a single grapheme, but it is composed of two characters
+    // (`a` and `̊`).
+    //
+    // `graphemes` returns an iterator over the graphemes in the input `s`.
+    // `true` specifies that we want to use the extended grapheme definition set,
+    // the recommended one.
+    let is_too_long = s.graphemes(true).count() > 256;
+
+    let forbidden_chars = ['/', '(', ')', '<', '>', '[', ']', '\\', '{', '}'];
+    let contains_forbidden_chars = s.chars().any(|g| forbidden_chars.contains(&g));
+
+    !(is_empty || is_too_long || contains_forbidden_chars)
 }
 
 #[tracing::instrument(
