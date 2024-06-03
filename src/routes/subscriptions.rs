@@ -5,13 +5,13 @@ use actix_web::{
 use sqlx::{types::chrono::Utc, PgPool};
 use uuid::Uuid;
 
-use crate::domain::new_subscriber::NewSubscriber;
+use crate::domain::new_subscriber::{self, NewSubscriber};
 use crate::domain::{subscriber_email::SubscriberEmail, subscriber_name::SubscriberName};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    name: String,
-    email: String,
+    pub name: String,
+    pub email: String,
 }
 
 #[tracing::instrument(
@@ -23,18 +23,15 @@ pub struct FormData {
     )
 )]
 pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl Responder {
-    let subscriber_name = match SubscriberName::parse(form.0.name) {
-        Ok(name) => name,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-    let subscriber_email = match SubscriberEmail::parse(form.0.email) {
-        Ok(email) => email,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
+    // let new_subscriber = match NewSubscriber::try_from(form.0) {
+    //     Ok(subscriber) => subscriber,
+    //     Err(_) => return HttpResponse::BadRequest().finish(),
+    // };
 
-    let new_subscriber = NewSubscriber {
-        email: subscriber_email,
-        name: subscriber_name,
+    // If you provide a TryFrom implementation, your type automatically gets the corresponding TryInto implementation, for free
+    let new_subscriber = match form.0.try_into() {
+        Ok(subscriber) => subscriber,
+        Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
     match insert_subscriber(&db_pool, &new_subscriber).await {
