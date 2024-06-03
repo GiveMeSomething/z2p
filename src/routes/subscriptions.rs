@@ -5,7 +5,8 @@ use actix_web::{
 use sqlx::{types::chrono::Utc, PgPool};
 use uuid::Uuid;
 
-use crate::domain::subscriber_name::{NewSubscriber, SubscriberName};
+use crate::domain::new_subscriber::NewSubscriber;
+use crate::domain::{subscriber_email::SubscriberEmail, subscriber_name::SubscriberName};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -26,9 +27,13 @@ pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl
         Ok(name) => name,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
+    let subscriber_email = match SubscriberEmail::parse(form.0.email) {
+        Ok(email) => email,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
 
     let new_subscriber = NewSubscriber {
-        email: form.0.email,
+        email: subscriber_email,
         name: subscriber_name,
     };
 
@@ -53,7 +58,7 @@ async fn insert_subscriber(
     "#,
         Uuid::new_v4(),
         new_subscriber.name.as_ref(),
-        new_subscriber.email,
+        new_subscriber.email.as_ref(),
         Utc::now()
     )
     .execute(pool)
