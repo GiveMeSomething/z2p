@@ -26,7 +26,7 @@ impl SubscriberName {
             return Err(format!("{} is not a valid subscriber name", s));
         }
 
-        return Ok(Self(s));
+        Ok(Self(s))
     }
 }
 
