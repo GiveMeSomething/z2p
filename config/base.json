@@ -8,5 +8,9 @@
   },
   "application": {
     "port": "8000"
+  },
+  "email_client": {
+    "base_url": "localhost:8055",
+    "sender_email": "something@gmail.com"
   }
 }

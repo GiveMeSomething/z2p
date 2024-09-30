@@ -11,6 +11,7 @@ use tracing_actix_web::TracingLogger;
 
 use crate::{
     configurations::{read_configuration, Settings},
+    email_client::EmailClient,
     routes::{health_check, subscribe},
     telemetry::{gen_subscriber, init_subscriber},
 };
@@ -54,13 +55,22 @@ pub async fn spawn_server() -> (String, Settings) {
     Lazy::force(&TRACING);
 
     let mut configurations = read_configuration().expect("Failed to read configurations");
+
+    // Setup random database for testing
     let db_pool = configurations.database.pg_connection_pool_random().await;
+
+    // TODO: Patch this later for testing
+    let email_sender = configurations
+        .email_client
+        .sender()
+        .expect("Invalid sender's email address");
+    let email_client = EmailClient::new(configurations.email_client.base_url.clone(), email_sender);
 
     let listener = TcpListener::bind("localhost:0")
         .unwrap_or_else(|err| panic!("Cannot bind to random port with error {:?}", err));
     let bind_port = listener.local_addr().unwrap().port();
 
-    let server = run(listener, db_pool)
+    let server = run(listener, db_pool, email_client)
         .await
         .expect("Failed to spawn new server");
 
@@ -69,9 +79,14 @@ pub async fn spawn_server() -> (String, Settings) {
     (format!("http://localhost:{}", bind_port), configurations)
 }
 
-pub async fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
+pub async fn run(
+    listener: TcpListener,
+    db_pool: PgPool,
+    email_client: EmailClient,
+) -> Result<Server, std::io::Error> {
     // Atomic Reference Counted pointer - smart pointer
     let db_pool = web::Data::new(db_pool);
+    let email_client = web::Data::new(email_client);
 
     let server = HttpServer::new(move || {
         App::new()
@@ -79,6 +94,7 @@ pub async fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::
             .route("health_check", web::get().to(health_check))
             .route("subscriptions", web::post().to(subscribe))
             .app_data(db_pool.clone())
+            .app_data(email_client.clone())
     })
     .listen(listener)?
     .run();
