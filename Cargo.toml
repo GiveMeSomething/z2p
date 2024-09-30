@@ -31,11 +31,11 @@ tracing-actix-web = "0.7.9"
 unicode-segmentation = "1.11.0"
 claims = "0.7.1"
 validator = "0.16"
+reqwest = { version = "0.11.24", features = ["json", "rustls-tls"] }
 
 [dev-dependencies]
 fake = "2.9.2"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand = "0.8.5"
-reqwest = "0.11.24"
 
