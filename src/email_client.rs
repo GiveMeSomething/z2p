@@ -27,3 +27,11 @@ impl EmailClient {
         todo!()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn send_email_send_request() {
+        todo!()
+    }
+}
