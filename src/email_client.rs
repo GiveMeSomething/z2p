@@ -1,4 +1,3 @@
-use config::builder;
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, Secret};
 use serde::Serialize;
@@ -15,6 +14,7 @@ pub struct EmailClient {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
 struct SendEmailPayload {
     from: String,
     to: String,
@@ -45,7 +45,7 @@ impl EmailClient {
 
         let payload = SendEmailPayload {
             from: self.sender.as_ref().to_owned(),
-            to: self.sender.as_ref().to_owned(),
+            to: recipient.as_ref().to_owned(),
             subject: subject.to_owned(),
             html_body: html_content.to_owned(),
             text_body: text_content.to_owned(),
@@ -83,6 +83,23 @@ mod tests {
     use crate::domain::subscriber_email::SubscriberEmail;
     use crate::email_client::EmailClient;
 
+    struct SendEmailPayloadMatcher;
+
+    impl wiremock::Match for SendEmailPayloadMatcher {
+        fn matches(&self, request: &wiremock::Request) -> bool {
+            // Try to parse the payload as JSON
+            match serde_json::from_slice::<serde_json::Value>(&request.body) {
+                Ok(body) => {
+                    body.get("From").is_some()
+                        && body.get("To").is_some()
+                        && body.get("HtmlBody").is_some()
+                        && body.get("TextBody").is_some()
+                }
+                Err(_) => false,
+            }
+        }
+    }
+
     #[tokio::test]
     async fn send_email_send_request() {
         // Create a new HTTP server with wiremock
@@ -97,6 +114,7 @@ mod tests {
             .and(header("Content-Type", "application/json"))
             .and(path("/email"))
             .and(method("POST"))
+            .and(SendEmailPayloadMatcher)
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
             .mount(&mock_server)
