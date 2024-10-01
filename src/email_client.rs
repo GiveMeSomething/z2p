@@ -15,12 +15,12 @@ pub struct EmailClient {
 
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
-struct SendEmailPayload {
-    from: String,
-    to: String,
-    subject: String,
-    html_body: String,
-    text_body: String,
+struct SendEmailPayload<'a> {
+    from: &'a str,
+    to: &'a str,
+    subject: &'a str,
+    html_body: &'a str,
+    text_body: &'a str,
 }
 
 impl EmailClient {
@@ -44,11 +44,11 @@ impl EmailClient {
         let email_api = base_url.join("/email").expect("Invalid email request API");
 
         let payload = SendEmailPayload {
-            from: self.sender.as_ref().to_owned(),
-            to: recipient.as_ref().to_owned(),
-            subject: subject.to_owned(),
-            html_body: html_content.to_owned(),
-            text_body: text_content.to_owned(),
+            from: self.sender.as_ref(),
+            to: recipient.as_ref(),
+            subject,
+            html_body: html_content,
+            text_body: text_content,
         };
 
         self.http_client
