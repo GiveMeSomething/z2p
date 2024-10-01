@@ -1,4 +1,7 @@
-use reqwest::Client;
+use config::builder;
+use reqwest::{Client, Url};
+use secrecy::{ExposeSecret, Secret};
+use serde::Serialize;
 
 use crate::domain::subscriber_email::SubscriberEmail;
 
@@ -6,14 +9,27 @@ pub struct EmailClient {
     http_client: Client,
     base_url: String,
     sender: SubscriberEmail,
+
+    // We don't want to get this into log by accident
+    email_service_auth_token: Secret<String>,
+}
+
+#[derive(Serialize)]
+struct SendEmailPayload {
+    from: String,
+    to: String,
+    subject: String,
+    html_body: String,
+    text_body: String,
 }
 
 impl EmailClient {
-    pub fn new(base_url: String, sender: SubscriberEmail) -> Self {
+    pub fn new(base_url: String, sender: SubscriberEmail, auth_token: Secret<String>) -> Self {
         Self {
             http_client: Client::new(),
             base_url,
             sender,
+            email_service_auth_token: auth_token,
         }
     }
 
@@ -23,8 +39,29 @@ impl EmailClient {
         subject: &str,
         html_content: &str,
         text_content: &str,
-    ) -> Result<(), String> {
-        todo!()
+    ) -> Result<(), reqwest::Error> {
+        let base_url = Url::parse(&self.base_url).expect("Invalid email client's base url");
+        let email_api = base_url.join("/email").expect("Invalid email request API");
+
+        let payload = SendEmailPayload {
+            from: self.sender.as_ref().to_owned(),
+            to: self.sender.as_ref().to_owned(),
+            subject: subject.to_owned(),
+            html_body: html_content.to_owned(),
+            text_body: text_content.to_owned(),
+        };
+
+        self.http_client
+            .post(email_api)
+            .header(
+                "X-Some-Server-Token",
+                self.email_service_auth_token.expose_secret(),
+            )
+            .json(&payload)
+            .send()
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -33,10 +70,11 @@ mod tests {
     use fake::{
         faker::{
             internet::en::SafeEmail,
-            lorem::en::{Paragraph, Sentence},
+            lorem::en::{Paragraph, Sentence, Word},
         },
         Fake,
     };
+    use secrecy::Secret;
     use wiremock::{matchers::any, Mock, MockServer, ResponseTemplate};
 
     use crate::domain::subscriber_email::SubscriberEmail;
@@ -49,7 +87,7 @@ mod tests {
 
         // Mock email client with new email sender
         let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClient::new(mock_server.uri(), sender);
+        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
 
         // Setup mock server
         Mock::given(any())

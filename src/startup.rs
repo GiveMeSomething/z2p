@@ -64,7 +64,11 @@ pub async fn spawn_server() -> (String, Settings) {
         .email_client
         .sender()
         .expect("Invalid sender's email address");
-    let email_client = EmailClient::new(configurations.email_client.base_url.clone(), email_sender);
+    let email_client = EmailClient::new(
+        configurations.email_client.base_url.clone(),
+        email_sender,
+        configurations.email_client.auth_token.clone(),
+    );
 
     let listener = TcpListener::bind("localhost:0")
         .unwrap_or_else(|err| panic!("Cannot bind to random port with error {:?}", err));

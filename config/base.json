@@ -11,6 +11,7 @@
   },
   "email_client": {
     "base_url": "localhost:8055",
-    "sender_email": "something@gmail.com"
+    "sender_email": "something@gmail.com",
+    "auth_token": "super-secret-value"
   }
 }
