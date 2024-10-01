@@ -75,7 +75,10 @@ mod tests {
         Fake,
     };
     use secrecy::Secret;
-    use wiremock::{matchers::any, Mock, MockServer, ResponseTemplate};
+    use wiremock::{
+        matchers::{header, header_exists, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use crate::domain::subscriber_email::SubscriberEmail;
     use crate::email_client::EmailClient;
@@ -90,7 +93,10 @@ mod tests {
         let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
 
         // Setup mock server
-        Mock::given(any())
+        Mock::given(header_exists("X-Some-Server-Token"))
+            .and(header("Content-Type", "application/json"))
+            .and(path("/email"))
+            .and(method("POST"))
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
             .mount(&mock_server)
