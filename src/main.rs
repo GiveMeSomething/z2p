@@ -26,6 +26,7 @@ async fn main() -> std::io::Result<()> {
         configurations.email_client.base_url,
         email_sender,
         configurations.email_client.auth_token,
+        std::time::Duration::from_micros(configurations.email_client.timeout),
     );
 
     let app_address = format!(

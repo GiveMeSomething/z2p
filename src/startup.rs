@@ -68,6 +68,8 @@ pub async fn spawn_server() -> (String, Settings) {
         configurations.email_client.base_url.clone(),
         email_sender,
         configurations.email_client.auth_token.clone(),
+        // Keep timeout low to avoid hanging tests
+        std::time::Duration::from_secs(1),
     );
 
     let listener = TcpListener::bind("localhost:0")

@@ -12,6 +12,7 @@
   "email_client": {
     "base_url": "localhost:8055",
     "sender_email": "something@gmail.com",
-    "auth_token": "super-secret-value"
+    "auth_token": "super-secret-value",
+    "timeout": 10000
   }
 }
