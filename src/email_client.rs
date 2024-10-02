@@ -106,16 +106,26 @@ mod tests {
         }
     }
 
+    fn subject() -> String {
+        Sentence(1..2).fake()
+    }
+
+    fn content() -> String {
+        Paragraph(1..2).fake()
+    }
+
+    fn subscriber_email() -> SubscriberEmail {
+        SubscriberEmail::parse(SafeEmail().fake()).unwrap()
+    }
+
+    fn email_client(base_url: String) -> EmailClient {
+        EmailClient::new(base_url, subscriber_email(), Secret::new(Word().fake()))
+    }
+
     #[tokio::test]
     async fn send_email_send_request() {
         // Create a new HTTP server with wiremock
         let mock_server = MockServer::start().await;
-
-        // Mock email client with new email sender
-        let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
-
-        // Setup mock server
         Mock::given(header_exists("X-Some-Server-Token"))
             .and(header("Content-Type", "application/json"))
             .and(path("/email"))
@@ -126,14 +136,9 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        // Setup email received and email content
-        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let subject: String = Sentence(1..2).fake();
-        let content: String = Paragraph(1..2).fake();
-
         // Act
-        let result = email_client
-            .send_email(subscriber_email, &subject, &content, &content)
+        let result = email_client(mock_server.uri())
+            .send_email(subscriber_email(), &subject(), &content(), &content())
             .await;
 
         // Assert
@@ -144,55 +149,34 @@ mod tests {
     async fn send_email_fails_if_server_response_not_ok() {
         // Create a new HTTP server with wiremock
         let mock_server = MockServer::start().await;
-
-        // Mock email client with new email sender
-        let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
-
-        // Setup mock server
         Mock::given(any())
             .respond_with(ResponseTemplate::new(500))
             .expect(1)
             .mount(&mock_server)
             .await;
 
-        // Setup email received and email content
-        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let subject: String = Sentence(1..2).fake();
-        let content: String = Paragraph(1..2).fake();
-
         // Act
-        let result = email_client
-            .send_email(subscriber_email, &subject, &content, &content)
+        let result = email_client(mock_server.uri())
+            .send_email(subscriber_email(), &subject(), &content(), &content())
             .await;
 
         // Assert
         assert_err!(result);
     }
 
+    #[tokio::test]
     async fn send_email_fails_if_server_hang() {
         // Create a new HTTP server with wiremock
         let mock_server = MockServer::start().await;
-
-        // Mock email client with new email sender
-        let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
-
-        // Setup mock server
         Mock::given(any())
             .respond_with(ResponseTemplate::new(500).set_delay(std::time::Duration::from_secs(60)))
             .expect(1)
             .mount(&mock_server)
             .await;
 
-        // Setup email received and email content
-        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
-        let subject: String = Sentence(1..2).fake();
-        let content: String = Paragraph(1..2).fake();
-
         // Act
-        let result = email_client
-            .send_email(subscriber_email, &subject, &content, &content)
+        let result = email_client(mock_server.uri())
+            .send_email(subscriber_email(), &subject(), &content(), &content())
             .await;
 
         // Assert
