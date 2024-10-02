@@ -25,8 +25,12 @@ struct SendEmailPayload<'a> {
 
 impl EmailClient {
     pub fn new(base_url: String, sender: SubscriberEmail, auth_token: Secret<String>) -> Self {
+        let http_client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap();
         Self {
-            http_client: Client::new(),
+            http_client,
             base_url,
             sender,
             email_service_auth_token: auth_token,
@@ -59,7 +63,8 @@ impl EmailClient {
             )
             .json(&payload)
             .send()
-            .await?;
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }
@@ -147,6 +152,35 @@ mod tests {
         // Setup mock server
         Mock::given(any())
             .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        // Setup email received and email content
+        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
+        let subject: String = Sentence(1..2).fake();
+        let content: String = Paragraph(1..2).fake();
+
+        // Act
+        let result = email_client
+            .send_email(subscriber_email, &subject, &content, &content)
+            .await;
+
+        // Assert
+        assert_err!(result);
+    }
+
+    async fn send_email_fails_if_server_hang() {
+        // Create a new HTTP server with wiremock
+        let mock_server = MockServer::start().await;
+
+        // Mock email client with new email sender
+        let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
+        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Word().fake()));
+
+        // Setup mock server
+        Mock::given(any())
+            .respond_with(ResponseTemplate::new(500).set_delay(std::time::Duration::from_secs(60)))
             .expect(1)
             .mount(&mock_server)
             .await;
