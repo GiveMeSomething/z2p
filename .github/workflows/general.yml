@@ -38,6 +38,6 @@ jobs:
       - name: Install sqlx and prepare
         run: |
           cargo install sqlx-cli
-          cargo sqlx prepare
+          cargo sqlx prepare -- --all-targets --all-features
       - name: Run Test
         run: cargo test
