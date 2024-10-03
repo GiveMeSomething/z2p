@@ -65,8 +65,8 @@ pub struct Application {
 
 impl Application {
     pub async fn build(config: &Settings) -> Result<Self, std::io::Error> {
-        let db_pool = build_connection_pool(&config);
-        let email_client = build_email_client(&config);
+        let db_pool = build_connection_pool(config);
+        let email_client = build_email_client(config);
 
         let address = format!(
             "{}:{}",
