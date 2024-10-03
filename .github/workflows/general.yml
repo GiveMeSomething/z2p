@@ -36,12 +36,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install sqlx and prepare
-        env:
-          SQLX_OFFLINE: true
         run: |
           cargo install sqlx-cli
           cargo sqlx prepare
       - name: Run Test
-        env:
-          SQLX_OFFLINE: true
         run: cargo test
