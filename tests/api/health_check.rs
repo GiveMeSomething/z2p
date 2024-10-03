@@ -1,18 +1,6 @@
-use actix_http::body::MessageBody;
-use actix_web::{body::BodySize, test};
 use reqwest::Client;
-use z2p::startup::{spawn_app, spawn_server};
 
-#[tokio::test]
-async fn health_check_works() {
-    let app = spawn_app().await;
-
-    let req = test::TestRequest::get().uri("/health_check").to_request();
-    let res = test::call_service(&app, req).await;
-
-    assert!(res.status().is_success());
-    assert_eq!(res.into_body().size(), BodySize::Sized(0));
-}
+use crate::helpers::spawn_server;
 
 #[tokio::test]
 async fn health_check_works_reqwest() {
