@@ -1,8 +1,6 @@
-use std::net::TcpListener;
 use z2p::{
     configurations,
-    email_client::EmailClient,
-    startup::run,
+    startup::Application,
     telemetry::{gen_subscriber, init_subscriber},
 };
 
@@ -13,4 +11,10 @@ async fn main() -> std::io::Result<()> {
 
     let configurations =
         configurations::read_configuration().expect("Failed to read configurations.");
+
+    let application = Application::build(&configurations)
+        .await
+        .expect("Failed to start server");
+
+    application.run_until_stopped().await
 }
