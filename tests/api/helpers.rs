@@ -1,10 +1,8 @@
-use std::net::TcpListener;
-
 use once_cell::sync::Lazy;
+use uuid::Uuid;
 use z2p::{
     configurations::{read_configuration, Settings},
-    email_client::EmailClient,
-    startup::run,
+    startup::Application,
     telemetry::{gen_subscriber, init_subscriber},
 };
 
@@ -28,33 +26,27 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub async fn spawn_server() -> (String, Settings) {
     Lazy::force(&TRACING);
 
-    let mut configurations = read_configuration().expect("Failed to read configurations");
+    let configurations = {
+        let mut config = read_configuration().expect("Failed to read configurations");
 
-    // Setup random database for testing
-    let db_pool = configurations.database.pg_connection_pool_random().await;
+        // Mock to random db
+        config.database.database_name = Uuid::new_v4().to_string();
 
-    // TODO: Patch this later for testing
-    let email_sender = configurations
-        .email_client
-        .sender()
-        .expect("Invalid sender's email address");
-    let email_client = EmailClient::new(
-        configurations.email_client.base_url.clone(),
-        email_sender,
-        configurations.email_client.auth_token.clone(),
-        // Keep timeout low to avoid hanging tests
-        std::time::Duration::from_secs(1),
-    );
+        // Mock random OS port
+        config.application.port = 0;
 
-    let listener = TcpListener::bind("localhost:0")
-        .unwrap_or_else(|err| panic!("Cannot bind to random port with error {:?}", err));
-    let bind_port = listener.local_addr().unwrap().port();
+        config
+    };
 
-    let server = run(listener, db_pool, email_client)
+    configurations.database.configure_database().await;
+
+    let application = Application::build(&configurations)
         .await
-        .expect("Failed to spawn new server");
+        .expect("Failed to build application");
 
-    tokio::spawn(server);
+    let address = format!("http://127.0.0.1:{}", application.port());
 
-    (format!("http://localhost:{}", bind_port), configurations)
+    tokio::spawn(application.run_until_stopped());
+
+    (address, configurations)
 }

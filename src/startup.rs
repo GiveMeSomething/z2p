@@ -58,13 +58,13 @@ pub fn build_connection_pool(config: &Settings) -> PgPool {
     )
 }
 
-struct Application {
+pub struct Application {
     port: u16,
     server: Server,
 }
 
 impl Application {
-    pub async fn build(config: Settings) -> Result<Self, std::io::Error> {
+    pub async fn build(config: &Settings) -> Result<Self, std::io::Error> {
         let db_pool = build_connection_pool(&config);
         let email_client = build_email_client(&config);
 
