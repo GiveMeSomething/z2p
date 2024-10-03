@@ -35,9 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Install sqlx and prepare
-        run: |
-          cargo install sqlx-cli
-          cargo sqlx prepare
       - name: Run Test
+        env:
+          SQLX_OFFLINE: true
         run: cargo test
