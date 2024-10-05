@@ -1,9 +1,11 @@
+use std::ops::DerefMut;
+
 use actix_web::{
     web::{self, Form},
     HttpResponse, Responder,
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use sqlx::{types::chrono::Utc, PgPool};
+use sqlx::{types::chrono::Utc, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::domain::new_subscriber::NewSubscriber;
@@ -23,18 +25,25 @@ pub struct FormData {
     )
 )]
 pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl Responder {
-    // let new_subscriber = match NewSubscriber::try_from(form.0) {
-    //     Ok(subscriber) => subscriber,
-    //     Err(_) => return HttpResponse::BadRequest().finish(),
-    // };
-
     // If you provide a TryFrom implementation, your type automatically gets the corresponding TryInto implementation, for free
-    let new_subscriber = match form.0.try_into() {
+    let new_subscriber: NewSubscriber = match form.0.try_into() {
         Ok(subscriber) => subscriber,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
-    match insert_subscriber(&db_pool, &new_subscriber).await {
+    let mut tx = match db_pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+
+    // Create new subscriber
+    let subscriber_id = match insert_subscriber(&mut tx, &new_subscriber).await {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+
+    let subscription_token = generate_subscription_token();
+    match insert_subscription_token(&mut tx, subscriber_id, &subscription_token).await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
@@ -42,34 +51,33 @@ pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl
 
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(pool, new_subscriber)
+    skip(tx, new_subscriber)
 )]
 async fn insert_subscriber(
-    pool: &PgPool,
+    tx: &mut Transaction<'_, Postgres>,
     new_subscriber: &NewSubscriber,
-) -> Result<(), sqlx::Error> {
+) -> Result<Uuid, sqlx::Error> {
+    let subscriber_id = Uuid::new_v4();
     sqlx::query!(
-        r#"
-    INSERT INTO subscriptions (id, name, email, subscribed_at)
-    VALUES ($1, $2, $3, $4)
-    "#,
-        Uuid::new_v4(),
+        "INSERT INTO subscriptions (id, name, email, subscribed_at) VALUES ($1, $2, $3, $4)",
+        subscriber_id,
         new_subscriber.name.as_ref(),
         new_subscriber.email.as_ref(),
-        Utc::now()
+        Utc::now(),
     )
-    .execute(pool)
+    // This extract the inner connection from the tx, which is required for this execute function to work
+    .execute(tx.deref_mut())
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
+    .map_err(|err| {
+        tracing::error!("Failed to execute query: {:?}", err);
+        err
     })?;
 
-    Ok(())
+    Ok(subscriber_id)
 }
 
 async fn insert_subscription_token(
-    pool: &PgPool,
+    tx: &mut Transaction<'_, Postgres>,
     subscriber_id: Uuid,
     subscription_token: &str,
 ) -> Result<(), sqlx::Error> {
@@ -78,7 +86,7 @@ async fn insert_subscription_token(
         subscription_token,
         subscriber_id
     )
-    .execute(pool)
+    .execute(tx.deref_mut())
     .await
     .map_err(|err| {
         tracing::error!("Failed to execute query: {:?}", err);
