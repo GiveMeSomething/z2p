@@ -43,10 +43,18 @@ pub async fn subscribe(form: Form<FormData>, db_pool: web::Data<PgPool>) -> impl
     };
 
     let subscription_token = generate_subscription_token();
-    match insert_subscription_token(&mut tx, subscriber_id, &subscription_token).await {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(_) => HttpResponse::InternalServerError().finish(),
+    if insert_subscription_token(&mut tx, subscriber_id, &subscription_token)
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
     }
+
+    if tx.commit().await.is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    HttpResponse::Ok().finish()
 }
 
 #[tracing::instrument(
@@ -59,11 +67,12 @@ async fn insert_subscriber(
 ) -> Result<Uuid, sqlx::Error> {
     let subscriber_id = Uuid::new_v4();
     sqlx::query!(
-        "INSERT INTO subscriptions (id, name, email, subscribed_at) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO subscriptions (id, name, email, subscribed_at, status) VALUES ($1, $2, $3, $4, $5)",
         subscriber_id,
         new_subscriber.name.as_ref(),
         new_subscriber.email.as_ref(),
         Utc::now(),
+        "pending",
     )
     // This extract the inner connection from the tx, which is required for this execute function to work
     .execute(tx.deref_mut())
@@ -76,6 +85,10 @@ async fn insert_subscriber(
     Ok(subscriber_id)
 }
 
+#[tracing::instrument(
+    name = "Saving new subscription token into database",
+    skip(tx, subscriber_id, subscription_token)
+)]
 async fn insert_subscription_token(
     tx: &mut Transaction<'_, Postgres>,
     subscriber_id: Uuid,
