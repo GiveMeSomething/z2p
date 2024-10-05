@@ -2,6 +2,7 @@ use actix_web::{
     web::{self, Form},
     HttpResponse, Responder,
 };
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use sqlx::{types::chrono::Utc, PgPool};
 use uuid::Uuid;
 
@@ -65,4 +66,32 @@ async fn insert_subscriber(
     })?;
 
     Ok(())
+}
+
+async fn insert_subscription_token(
+    pool: &PgPool,
+    subscriber_id: Uuid,
+    subscription_token: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"#,
+        subscription_token,
+        subscriber_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|err| {
+        tracing::error!("Failed to execute query: {:?}", err);
+        err
+    })?;
+
+    Ok(())
+}
+
+fn generate_subscription_token() -> String {
+    let mut rng = thread_rng();
+    std::iter::repeat_with(|| rng.sample(Alphanumeric))
+        .map(char::from)
+        .take(25)
+        .collect()
 }
